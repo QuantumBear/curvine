@@ -52,8 +52,10 @@ get_os_version() {
 get_fuse_version() {
   if command -v fusermount3 > /dev/null 2>&1; then
       echo "fuse3"
-  else
+  elif command -v fusermount > /dev/null 2>&1; then
       echo "fuse2"
+  else
+      echo ""  # No FUSE available
   fi
 }
 
@@ -86,10 +88,22 @@ fi
 CRATE_ZIP=$2
 
 # Compile rust
-if [[ "${PROFILE}" = "release" ]]; then
-  cargo build --features curvine-fuse/"$FUSE_VERSION" --release
+echo "Building with FUSE version: ${FUSE_VERSION:-none}"
+if [ -n "$FUSE_VERSION" ]; then
+  # Build with FUSE feature
+  if [[ "${PROFILE}" = "release" ]]; then
+    cargo build --features curvine-fuse/"$FUSE_VERSION" --release
+  else
+    cargo build --features curvine-fuse/"$FUSE_VERSION"
+  fi
 else
-  cargo build --features curvine-fuse/"$FUSE_VERSION"
+  # Build without FUSE feature
+  echo "No FUSE found, building without FUSE module..."
+  if [[ "${PROFILE}" = "release" ]]; then
+    cargo build --release
+  else
+    cargo build
+  fi
 fi
 if [ $? -ne 0 ]; then
     echo "Cargo build failed. Exiting..."
@@ -112,7 +126,12 @@ mkdir -p "$FS_HOME"/curvine-libsdk/java/native
 
 # Copy files
 cp "$FS_HOME"/target/${PROFILE}/curvine-server "$DIST_DIR"/lib
-cp "$FS_HOME"/target/${PROFILE}/curvine-fuse "$DIST_DIR"/lib
+if [ -n "$FUSE_VERSION" ]; then
+  cp "$FS_HOME"/target/${PROFILE}/curvine-fuse "$DIST_DIR"/lib
+  echo "FUSE module included in package"
+else
+  echo "FUSE module skipped (not available)"
+fi
 cp "$FS_HOME"/target/${PROFILE}/curvine-client "$DIST_DIR"/lib
 cp "$FS_HOME"/target/${PROFILE}/curvine-bench "$DIST_DIR"/lib
 cp "$FS_HOME"/etc/* "$DIST_DIR"/conf
@@ -123,7 +142,7 @@ mv "$FS_HOME"/curvine-web/webui/dist "$DIST_DIR"/webui
 # Write to version file
 echo "commit=$GIT_VERSION" > "$DIST_DIR"/build-version
 echo "os=${OS_VERSION}_$ARCH_NAME" >> "$DIST_DIR"/build-version
-echo "fuse=$FUSE_VERSION" >> "$DIST_DIR"/build-version
+echo "fuse=${FUSE_VERSION:-none}" >> "$DIST_DIR"/build-version
 echo "version=$CURVINE_VERSION" >> "$DIST_DIR"/build-version
 
 chmod +x "$DIST_DIR"/bin/*

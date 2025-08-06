@@ -100,8 +100,14 @@ ifeq ($(MODE),release)
 endif
 
 # Build curvine-fuse
-fuse:
-	cargo build -p curvine-fuse $(CARGO_FLAGS)
+fuse: check-env
+	@if [ -n "$$CURVINE_FUSE_FEATURE" ]; then \
+		echo "Building curvine-fuse with feature: $$CURVINE_FUSE_FEATURE"; \
+		cargo build -p curvine-fuse --features "$$CURVINE_FUSE_FEATURE" $(CARGO_FLAGS); \
+	else \
+		echo "FUSE not available, skipping curvine-fuse build"; \
+		exit 1; \
+	fi
 
 # Build curvine-server
 server:

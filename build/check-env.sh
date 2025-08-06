@@ -175,18 +175,23 @@ else
     print_status "FAIL" "LLVM not found. Please install LLVM version 12.0.0 or later" "LLVM"
 fi
 
-# Check FUSE development packages
+# Check FUSE development packages (optional)
 echo -e "${BLUE}Checking FUSE...${NC}"
 FUSE_FOUND=false
+FUSE2_FOUND=false
+FUSE3_FOUND=false
+FUSE_FEATURE=""
 
 # Check for libfuse3 development package
 if pkg-config --exists fuse3 2>/dev/null; then
     FUSE3_VERSION=$(pkg-config --modversion fuse3 2>/dev/null || echo "unknown")
     print_status "OK" "libfuse3 development package found (version: $FUSE3_VERSION)"
     FUSE_FOUND=true
+    FUSE3_FOUND=true
 elif [ -f "/usr/include/fuse3/fuse.h" ] || [ -f "/usr/local/include/fuse3/fuse.h" ]; then
     print_status "OK" "libfuse3 development headers found"
     FUSE_FOUND=true
+    FUSE3_FOUND=true
 fi
 
 # Check for libfuse2 development package
@@ -194,13 +199,26 @@ if pkg-config --exists fuse 2>/dev/null; then
     FUSE2_VERSION=$(pkg-config --modversion fuse 2>/dev/null || echo "unknown")
     print_status "OK" "libfuse2 development package found (version: $FUSE2_VERSION)"
     FUSE_FOUND=true
+    FUSE2_FOUND=true
 elif [ -f "/usr/include/fuse/fuse.h" ] || [ -f "/usr/local/include/fuse/fuse.h" ]; then
     print_status "OK" "libfuse2 development headers found"
     FUSE_FOUND=true
+    FUSE2_FOUND=true
 fi
 
-if [ "$FUSE_FOUND" = false ]; then
-    print_status "FAIL" "FUSE development package not found. Please install libfuse2-dev or libfuse3-dev" "FUSE"
+# Determine FUSE feature to use
+if [ "$FUSE3_FOUND" = true ] && [ "$FUSE2_FOUND" = true ]; then
+    FUSE_FEATURE="fuse3"
+    print_status "OK" "Both FUSE2 and FUSE3 found, will use FUSE3 for compilation"
+elif [ "$FUSE3_FOUND" = true ]; then
+    FUSE_FEATURE="fuse3"
+    print_status "OK" "FUSE3 found, will use FUSE3 for compilation"
+elif [ "$FUSE2_FOUND" = true ]; then
+    FUSE_FEATURE="fuse2"
+    print_status "OK" "FUSE2 found, will use FUSE2 for compilation"
+else
+    FUSE_FEATURE=""
+    print_status "WARN" "FUSE development package not found. FUSE module will be skipped during compilation"
 fi
 
 # Check JDK (version 1.8 or later)
