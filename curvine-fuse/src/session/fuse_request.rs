@@ -114,6 +114,14 @@ impl FuseRequest {
 
             FUSE_GETATTR => FuseOperator::GetAttr(GetAttr { header }),
 
+            FUSE_READLINK => FuseOperator::Readlink(Readlink { header }),
+
+            FUSE_SYMLINK => FuseOperator::Symlink(Symlink {
+                header,
+                linkname: decoder.get_os_str()?,
+                target: decoder.get_os_str()?,
+            }),
+
             FUSE_GETXATTR => FuseOperator::GetXAttr(GetXAttr {
                 header,
                 arg: decoder.get_struct()?,

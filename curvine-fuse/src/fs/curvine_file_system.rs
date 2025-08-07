@@ -127,9 +127,9 @@ impl CurvineFileSystem {
 
         // Use mode from FileStatus if available, otherwise use default calculation
         let mode = if status.mode != 0 {
-            FuseUtils::get_mode(status.mode, status.is_dir)
+            FuseUtils::get_mode(status.mode, status.file_type)
         } else {
-            FuseUtils::get_mode(FUSE_DEFAULT_MODE & !conf.umask, status.is_dir)
+            FuseUtils::get_mode(FUSE_DEFAULT_MODE & !conf.umask, status.file_type)
         };
 
         Ok(fuse_attr {
@@ -995,5 +995,82 @@ impl fs::FileSystem for CurvineFileSystem {
 
     async fn batch_forget(&self, op: BatchForget<'_>) -> FuseResult<()> {
         self.state.batch_forget_node(op.nodes)
+    }
+
+    // Create a symbolic link
+    async fn symlink(&self, op: Symlink<'_>) -> FuseResult<fuse_entry_out> {
+        let linkname = try_option!(op.linkname.to_str());
+        let target = try_option!(op.target.to_str());
+        let id = op.header.nodeid;
+
+        if linkname.len() > FUSE_MAX_NAME_LENGTH {
+            return err_fuse!(libc::ENAMETOOLONG);
+        }
+
+        let (parent, linkname) = if linkname == FUSE_CURRENT_DIR {
+            (id, None)
+        } else if linkname == FUSE_PARENT_DIR {
+            let parent = self.state.get_parent_id(id)?;
+            (parent, None)
+        } else {
+            (id, Some(linkname))
+        };
+
+        let link_path = self.state.get_path_common(parent, linkname)?;
+
+        info!(
+            "symlink: linkname={:?}, target={:?}, link_path={:?}",
+            linkname, target, link_path
+        );
+        // Call backend filesystem to create the symbolic link
+        // Use force=false to prevent overwriting existing files (standard ln -s behavior)
+        self.fs.symlink(target, &link_path, false).await?;
+
+        // Get the created symlink's attributes
+        let entry = self.lookup_path(parent, linkname, &link_path).await?;
+
+        Ok(Self::create_entry_out(&self.conf, entry))
+    }
+
+    // Read the target of a symbolic link
+    async fn readlink(&self, op: Readlink<'_>) -> FuseResult<BytesMut> {
+        info!("readlink: nodeid={:?}", op.header.nodeid);
+        let path = self.state.get_path(op.header.nodeid)?;
+
+        // Get file status to read the symlink target
+        let status = self.fs_get_status(&path).await?;
+
+        // Check if it's actually a symlink
+        if status.file_type != curvine_common::state::FileType::Link {
+            return err_fuse!(libc::EINVAL, "Not a symbolic link: {}", path);
+        }
+
+        // Get the target from the file status
+        let curvine_target = match status.target {
+            Some(target) => target,
+            None => {
+                return err_fuse!(libc::ENODATA, "Symbolic link has no target: {}", path);
+            }
+        };
+
+        // Return the original target path as stored (POSIX standard behavior)
+        info!("readlink: path={:?}, target={:?}", path, curvine_target);
+
+        // Return the target path as bytes
+        let mut buf = crate::session::FuseBuf::default();
+        let target_bytes = curvine_target.as_bytes();
+        info!(
+            "readlink: target_bytes={:?}, len={}",
+            target_bytes,
+            target_bytes.len()
+        );
+        buf.add_slice(target_bytes);
+        let result = buf.take();
+        info!(
+            "readlink: result_bytes={:?}, len={}",
+            result.as_ref(),
+            result.len()
+        );
+        Ok(result)
     }
 }

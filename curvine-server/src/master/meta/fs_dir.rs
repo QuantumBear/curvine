@@ -722,22 +722,18 @@ impl FsDir {
 
     pub fn symlink(
         &mut self,
-        target: InodePath,
+        target: String,
         link: InodePath,
         force: bool,
         mode: u32,
     ) -> FsResult<()> {
         let op_ms = LocalTime::mills();
 
-        if target.get_last_inode().is_none() {
-            return err_ext!(FsError::file_not_found(target.path()));
-        }
-
         let new_inode = InodeFile::with_link(
             self.inode_id.next()?,
             link.name(),
             op_ms as i64,
-            target.path(),
+            target,
             mode,
         );
 

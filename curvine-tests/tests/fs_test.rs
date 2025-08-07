@@ -323,14 +323,10 @@ async fn set_attr_recursive(fs: &CurvineFileSystem) -> CommonResult<()> {
 }
 
 async fn symlink(fs: &CurvineFileSystem) -> CommonResult<()> {
-    let path = Path::from_str("/fs_test/symlink/data/test.log")?;
-    let mut writer = fs.create(&path, true).await?;
-    writer.write("symlink".as_bytes()).await?;
-    writer.complete().await?;
-
+    let path = "/../a/b/test.log";
     // create symlink
     let link = Path::from_str("/fs_test/symlink/link")?;
-    fs.symlink(&path, &link, true).await?;
+    fs.symlink(path, &link, true).await?;
 
     let list = fs.list_status(&Path::from_str("/fs_test/symlink")?).await?;
     for item in &list {
@@ -340,10 +336,7 @@ async fn symlink(fs: &CurvineFileSystem) -> CommonResult<()> {
 
     let status = fs.get_status(&link).await?;
     println!("link status{:?}", status);
-    assert_eq!(
-        status.target,
-        Some("/fs_test/symlink/data/test.log".to_string())
-    );
+    assert_eq!(status.target, Some(path.to_string()));
     assert_eq!(status.file_type, FileType::Link);
 
     let context = fs.read_string(&link).await?;

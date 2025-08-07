@@ -52,6 +52,8 @@ pub enum FuseOperator<'a> {
     Interrupt(Interrupt<'a>),
     ListXAttr(ListXAttr<'a>),
     FSync(FSync<'a>),
+    Symlink(Symlink<'a>),
+    Readlink(Readlink<'a>),
 }
 
 #[repr(i8)]
@@ -322,4 +324,24 @@ pub struct ListXAttr<'a> {
 pub struct FSync<'a> {
     pub header: &'a fuse_in_header,
     pub arg: &'a fuse_fsync_in,
+}
+
+/// ```txt
+/// /linkname -> /target_path
+/// linkname: /linkname
+/// target: /target_path
+/// ```
+#[derive(Debug)]
+pub struct Symlink<'a> {
+    pub header: &'a fuse_in_header,
+    // symlink name
+    pub linkname: &'a OsStr,
+    // target name that the symlink point to
+    pub target: &'a OsStr,
+}
+
+// Read the target of a symbolic link.
+#[derive(Debug)]
+pub struct Readlink<'a> {
+    pub header: &'a fuse_in_header,
 }

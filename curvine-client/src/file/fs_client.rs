@@ -368,9 +368,9 @@ impl FsClient {
         Ok(())
     }
 
-    pub async fn symlink(&self, target: &Path, link: &Path, force: bool) -> FsResult<()> {
+    pub async fn symlink(&self, target: &str, link: &Path, force: bool) -> FsResult<()> {
         let req = SymlinkRequest {
-            target: target.encode(),
+            target: target.to_string(),
             link: link.encode(),
             force,
             mode: ClientConf::DEFAULT_FILE_SYSTEM_MODE,

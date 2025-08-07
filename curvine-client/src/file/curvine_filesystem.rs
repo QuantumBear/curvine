@@ -230,7 +230,7 @@ impl CurvineFileSystem {
         self.fs_client.set_attr(path, opts).await
     }
 
-    pub async fn symlink(&self, target: &Path, link: &Path, force: bool) -> FsResult<()> {
+    pub async fn symlink(&self, target: &str, link: &Path, force: bool) -> FsResult<()> {
         self.fs_client.symlink(target, link, force).await
     }
 

@@ -53,11 +53,14 @@ impl FuseUtils {
         }
     }
 
-    pub fn get_mode(perm: u32, is_dir: bool) -> u32 {
-        if is_dir {
-            perm | (libc::S_IFDIR as u32)
-        } else {
-            perm | (libc::S_IFREG as u32)
+    pub fn get_mode(perm: u32, file_type: curvine_common::state::FileType) -> u32 {
+        use curvine_common::state::FileType;
+        match file_type {
+            FileType::Dir => perm | (libc::S_IFDIR as u32),
+            FileType::Link => perm | (libc::S_IFLNK as u32),
+            FileType::File | FileType::Stream | FileType::Agg | FileType::Object => {
+                perm | (libc::S_IFREG as u32)
+            }
         }
     }
 
@@ -74,11 +77,13 @@ impl FuseUtils {
     }
 
     // Determine whether it is the running file type.
-    // Currently, the file system only supports: files and directories.
+    // Currently, the file system supports: files, directories, and symbolic links.
     pub fn is_allow_file_type(mode: u32) -> bool {
         let file_type = mode & libc::S_IFMT as u32;
 
-        file_type == libc::S_IFREG as u32 || file_type == libc::S_IFDIR as u32
+        file_type == libc::S_IFREG as u32
+            || file_type == libc::S_IFDIR as u32
+            || file_type == libc::S_IFLNK as u32
     }
 
     pub fn has_truncate(flags: u32) -> bool {

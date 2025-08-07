@@ -171,5 +171,15 @@ pub trait FileSystem: Send + Sync + 'static {
         async move { err_fuse!(libc::ENOSYS, "{}", msg) }
     }
 
+    async fn symlink(&self, op: Symlink<'_>) -> FuseResult<fuse_entry_out> {
+        let msg = format!("{:?}", op);
+        async move { err_fuse!(libc::ENOSYS, "{}", msg) }
+    }
+
+    async fn readlink(&self, op: Readlink<'_>) -> FuseResult<BytesMut> {
+        let msg = format!("{:?}", op);
+        async move { err_fuse!(libc::ENOSYS, "{}", msg) }
+    }
+
     fn unmount(&self) {}
 }

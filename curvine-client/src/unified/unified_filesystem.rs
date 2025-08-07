@@ -188,9 +188,13 @@ impl UnifiedFileSystem {
     }
 
     // If the path lies outside the mount point, the operation behaves as a full delete.
-    // If it’s within the mount point, only the associated cache files will be removed. (ufs will be ignored)
+    // If it's within the mount point, only the associated cache files will be removed. (ufs will be ignored)
     pub async fn free(&self, path: &Path, recursive: bool) -> FsResult<()> {
         self.cv.delete(path, recursive).await
+    }
+
+    pub async fn symlink(&self, target: &str, link: &Path, force: bool) -> FsResult<()> {
+        self.cv.symlink(target, link, force).await
     }
 }
 

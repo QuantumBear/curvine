@@ -312,6 +312,10 @@ impl<T: FileSystem> FuseSession<T> {
 
             FuseOperator::FSync(op) => reply.send_rep(fs.fsync(op).await).await,
 
+            FuseOperator::Symlink(op) => reply.send_rep(fs.symlink(op).await).await,
+
+            FuseOperator::Readlink(op) => reply.send_buf(fs.readlink(op).await).await,
+
             _ => {
                 let err: FuseResult<fuse_out_header> =
                     err_fuse!(libc::ENOSYS, "Unsupported operation {:?}", req.opcode());
