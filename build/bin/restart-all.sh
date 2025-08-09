@@ -17,11 +17,38 @@
 
 # Close all services and restart.
 
+# Function to wait for a process to start
+wait_for_process() {
+    local service_name=$1
+    local timeout=30
+    local count=0
+    
+    echo "Waiting for $service_name to start..."
+    while [ $count -lt $timeout ]; do
+        if ps -ef | grep "curvine" | grep "$service_name" | grep -v grep > /dev/null; then
+            echo "$service_name started successfully"
+            return 0
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+    
+    echo "Warning: $service_name did not start within $timeout seconds"
+    return 1
+}
+
 pkill -9 -f "curvine"
 
+# Wait a moment for processes to be killed
 sleep 3
+
+# Start master and worker services
 bin/curvine-master.sh start
 bin/curvine-worker.sh start
 
-sleep 3
+# Wait for master and worker to start
+wait_for_process "master"
+wait_for_process "worker"
+
+# Start fuse service
 bin/curvine-fuse.sh start
